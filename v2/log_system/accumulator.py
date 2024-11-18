@@ -1,66 +1,67 @@
 import logging
-from logging import LogRecord
-from utils.models import LogMessage, ErrorLogMessage, WarnLogMessage
-from kafka_client import KafkaProducer
-
+import json
+import requests
+from logging.handlers import SysLogHandler
 
 class LogAccumulator:
-    def __init__(self, service_name: str, node_id: str):
-        self.service_name = service_name
-        self.node_id = node_id
-        self.kafka_producer = KafkaProducer()
-        self._setup_logging()
+    def __init__(self, fluentd_host="localhost", fluentd_port=24224):
+        """
+        Initialize the Log Accumulator with Fluentd configuration.
+        
+        :param fluentd_host: Host where Fluentd is running
+        :param fluentd_port: Port on which Fluentd is listening
+        """
+        self.fluentd_host = fluentd_host
+        self.fluentd_port = fluentd_port
 
-    def _setup_logging(self):
-        logger = logging.getLogger(self.service_name)
-        logger.setLevel(logging.INFO)
-        handler = LoggingHandler(self)
-        logger.addHandler(handler)
-        self.logger = logger
+        # Set up logging
+        self.logger = logging.getLogger("fluentd")
+        self.logger.setLevel(logging.INFO)
 
-    def process_log(self, record: LogRecord):
-        if record.levelno >= logging.ERROR:
-            message = ErrorLogMessage(
-                node_id=self.node_id,
-                message_type="LOG",
-                log_level="ERROR",
-                message=record.getMessage(),
-                service_name=self.service_name,
-                error_details={
-                    "error_code": getattr(record, "error_code", "UNKNOWN"),
-                    "error_message": (
-                        str(record.exc_info[1])
-                        if record.exc_info
-                        else record.getMessage()
-                    ),
-                },
-            )
-        elif record.levelno >= logging.WARNING:
-            message = WarnLogMessage(
-                node_id=self.node_id,
-                message_type="LOG",
-                log_level="WARN",
-                message=record.getMessage(),
-                service_name=self.service_name,
-                response_time_ms=getattr(record, "response_time_ms", 0),
-                threshold_limit_ms=getattr(record, "threshold_limit_ms", 0),
-            )
-        else:
-            message = LogMessage(
-                node_id=self.node_id,
-                message_type="LOG",
-                log_level="INFO",
-                message=record.getMessage(),
-                service_name=self.service_name,
-            )
+        # Use SysLogHandler for Fluentd integration
+        syslog_handler = SysLogHandler(address=(fluentd_host, fluentd_port))
+        syslog_handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(syslog_handler)
 
-        self.kafka_producer.send_log(message)
+    def log(self, level, service, message, metadata=None):
+        """
+        Send a log message to Fluentd.
 
+        :param level: Log level (e.g., 'INFO', 'ERROR', etc.)
+        :param service: Name of the service generating the log
+        :param message: Log message
+        :param metadata: Additional metadata as a dictionary
+        """
+        log_entry = {
+            "level": level,
+            "service": service,
+            "message": message,
+            "metadata": metadata or {},
+        }
 
-class LoggingHandler(logging.Handler):
-    def __init__(self, accumulator: LogAccumulator):
-        super().__init__()
-        self.accumulator = accumulator
+        try:
+            # Convert log entry to JSON
+            log_json = json.dumps(log_entry)
 
-    def emit(self, record):
-        self.accumulator.process_log(record)
+            # Log through Fluentd
+            self.logger.info(log_json)
+        except Exception as e:
+            print(f"Error logging to Fluentd: {e}")
+
+    def log_error(self, service, message, metadata=None):
+        """
+        Convenience method to log errors.
+        """
+        self.log(level="ERROR", service=service, message=message, metadata=metadata)
+
+    def log_info(self, service, message, metadata=None):
+        """
+        Convenience method to log informational messages.
+        """
+        self.log(level="INFO", service=service, message=message, metadata=metadata)
+
+    def log_warn(self, service, message, metadata=None):
+        """
+        Convenience method to log warnings.
+        """
+        self.log(level="WARNING", service=service, message=message, metadata=metadata)
