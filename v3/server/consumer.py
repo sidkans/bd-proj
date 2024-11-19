@@ -1,5 +1,6 @@
 from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta
 import json
 
 consumer = KafkaConsumer(
@@ -12,20 +13,54 @@ consumer = KafkaConsumer(
 
 es = Elasticsearch(["localhost:9200"])
 
+# Dictionary to track last heartbeat times
+last_heartbeats = {}
+
 for message in consumer:
+    msg = message.value
     print("\nReceived Message:")
-    print(json.dumps(message.value, indent=4))
+    print(json.dumps(msg, indent=4))
 
-    es.index(index="logs", document=message.value)
+    es.index(index="logs", document=msg)
 
-    response = es.search(
-        index="logs",
-        body={
-            "query": {"match": {"message_type": message.value.get("message_type")}},
-            "sort": [{"timestamp": {"order": "desc"}}],
-            "size": 3,
-        },
-    )
-    print("\nLast 3 indexed messages:")
-    print(json.dumps(response["hits"]["hits"], indent=4))
-    print("-" * 50)
+    message_type = msg.get("message_type")
+    node_id = msg.get("node_id")
+
+    if message_type == "REGISTRATION":
+        # Store or update the service registry
+        registry_doc = {
+            "node_id": node_id,
+            "service_name": msg.get("service_name"),
+            "status": "UP",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        es.index(index="service_registry", id=node_id, document=registry_doc)
+        print(f"Registered service {msg.get('service_name')} with node_id {node_id}")
+
+    elif message_type == "HEARTBEAT":
+        # Update last heartbeat time
+        last_heartbeats[node_id] = datetime.utcnow()
+        # Update status to UP
+        es.update(
+            index="service_registry",
+            id=node_id,
+            body={"doc": {"status": "UP", "timestamp": datetime.utcnow().isoformat()}},
+        )
+
+    elif message_type == "LOG":
+        if msg.get("log_level") in ["ERROR", "WARN"]:
+            print(f"ALERT: {msg.get('log_level')} - {msg.get('message')}")
+
+    # Check for node failures
+    current_time = datetime.utcnow()
+    for node, last_hb in list(last_heartbeats.items()):
+        if current_time - last_hb > timedelta(seconds=15):
+            # Update status to DOWN
+            es.update(
+                index="service_registry",
+                id=node,
+                body={"doc": {"status": "DOWN", "timestamp": current_time.isoformat()}},
+            )
+            print(f"ALERT: Node {node} is DOWN")
+            # Remove node from tracking
+            del last_heartbeats[node]

@@ -18,10 +18,9 @@ class BaseService:
 
     def _register_service(self):
         self.registration_message = {
-            "message_type": "REGISTRATION",
             "node_id": self.node_id,
+            "message_type": "REGISTRATION",
             "service_name": self.service_name,
-            "status": "UP",
             "timestamp": datetime.utcnow().isoformat(),
         }
         # Send registration message to Kafka
@@ -30,8 +29,9 @@ class BaseService:
     def _send_heartbeat(self):
         while True:
             heartbeat = {
-                "message_type": "HEARTBEAT",
                 "node_id": self.node_id,
+                "message_type": "HEARTBEAT",
+                "status": "UP",
                 "timestamp": datetime.utcnow().isoformat(),
             }
             self.logger.emit("heartbeat", heartbeat)
