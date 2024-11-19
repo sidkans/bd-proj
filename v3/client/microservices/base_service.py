@@ -2,7 +2,6 @@ import threading
 import time
 from uuid import uuid4
 from datetime import datetime
-from schema import RegistrationMessage, HeartbeatMessage
 from fluent import sender
 
 
@@ -23,7 +22,6 @@ class BaseService:
             "service_name": self.service_name,
             "timestamp": datetime.utcnow().isoformat(),
         }
-        # Send registration message to Kafka
         self.logger.emit("registration", self.registration_message)
 
     def _send_heartbeat(self):

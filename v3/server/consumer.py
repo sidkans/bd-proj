@@ -11,9 +11,8 @@ consumer = KafkaConsumer(
     value_deserializer=lambda x: json.loads(x.decode("utf-8")),
 )
 
-es = Elasticsearch(["localhost:9200"])
+es = Elasticsearch(["http://localhost:9200"])
 
-# Dictionary to track last heartbeat times
 last_heartbeats = {}
 
 for message in consumer:
@@ -27,7 +26,6 @@ for message in consumer:
     node_id = msg.get("node_id")
 
     if message_type == "REGISTRATION":
-        # Store or update the service registry
         registry_doc = {
             "node_id": node_id,
             "service_name": msg.get("service_name"),
@@ -38,9 +36,7 @@ for message in consumer:
         print(f"Registered service {msg.get('service_name')} with node_id {node_id}")
 
     elif message_type == "HEARTBEAT":
-        # Update last heartbeat time
         last_heartbeats[node_id] = datetime.utcnow()
-        # Update status to UP
         es.update(
             index="service_registry",
             id=node_id,
@@ -51,16 +47,13 @@ for message in consumer:
         if msg.get("log_level") in ["ERROR", "WARN"]:
             print(f"ALERT: {msg.get('log_level')} - {msg.get('message')}")
 
-    # Check for node failures
     current_time = datetime.utcnow()
     for node, last_hb in list(last_heartbeats.items()):
         if current_time - last_hb > timedelta(seconds=15):
-            # Update status to DOWN
             es.update(
                 index="service_registry",
                 id=node,
                 body={"doc": {"status": "DOWN", "timestamp": current_time.isoformat()}},
             )
             print(f"ALERT: Node {node} is DOWN")
-            # Remove node from tracking
             del last_heartbeats[node]
