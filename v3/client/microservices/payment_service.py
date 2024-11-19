@@ -4,7 +4,6 @@ import time
 from datetime import datetime
 from uuid import uuid4
 from fluent import sender
-from fluent import event
 
 
 class PaymentService(BaseService):
