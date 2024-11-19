@@ -91,3 +91,7 @@ class NotificationService(BaseService):
                 self.logger.info(json.dumps(heartbeat_message))
             log_id += 1
             time.sleep(random.uniform(2.0, 6.0))
+
+if __name__ == "__main__":
+    service = NotificationService()
+    service.start()

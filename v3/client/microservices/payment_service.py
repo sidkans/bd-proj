@@ -90,3 +90,7 @@ class PaymentService(BaseService):
                 self.logger.info(json.dumps(heartbeat_message))
             log_id += 1
             time.sleep(random.uniform(1.0, 5.0))
+
+if __name__ == "__main__":
+    service = PaymentService()
+    service.start()
