@@ -1,6 +1,10 @@
 from base_service import BaseService
 import random
 import time
+from fluent import sender, event
+
+# Fluentd setup
+sender.setup('fluentd-service', host='fluentd', port=24224)
 
 
 class PaymentService(BaseService):
