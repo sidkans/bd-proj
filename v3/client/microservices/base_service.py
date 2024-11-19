@@ -12,8 +12,8 @@ class BaseService:
         self.service_name = service_name
         self.node_id = f"{service_name}-{str(uuid4())}"
         self.kafka_producer = KafkaProducer(
-            bootstrap_servers=['kafka_broker:9092'],
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            bootstrap_servers=["localhost:9092"],
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
         self._register_service()
         self._start_heartbeat()
@@ -27,7 +27,7 @@ class BaseService:
             "timestamp": datetime.utcnow().isoformat(),
         }
         # Send registration message to Kafka
-        self.kafka_producer.send('service_registry', self.registration_message)
+        self.kafka_producer.send("service_registry", self.registration_message)
 
     def _send_heartbeat(self):
         while True:
@@ -36,7 +36,7 @@ class BaseService:
                 "node_id": self.node_id,
                 "timestamp": datetime.utcnow().isoformat(),
             }
-            self.kafka_producer.send('heartbeats', heartbeat)
+            self.kafka_producer.send("heartbeats", heartbeat)
             time.sleep(10)
 
     def _start_heartbeat(self):
