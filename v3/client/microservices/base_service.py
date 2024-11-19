@@ -8,16 +8,18 @@ from schema import RegistrationMessage, HeartbeatMessage
 
 class BaseService:
     def __init__(self, service_name: str):
+        self.service_name = service_name
+        self.node_id = f"{service_name}-{str(uuid4())}"
         self._register_service()
-        self._start_heartbeat()
 
     def _register_service(self):
-        registration = RegistrationMessage(
-            node_id=self.node_id,
-            message_type="REGISTRATION",
-            service_name=self.service_name,
-        )
-        self.kafka_producer.send_heartbeat(registration)
+        self.registration_message = {
+            "message_type": "REGISTRATION",
+            "node_id": self.node_id,
+            "service_name": self.service_name,
+            "status": "UP",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
     def _send_heartbeat(self):
         while True:
