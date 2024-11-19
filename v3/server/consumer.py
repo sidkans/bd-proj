@@ -20,8 +20,8 @@ for message in consumer:
     # print("\nReceived Message:")
     # print(json.dumps(msg, indent=4))
     message_type = msg.get("message_type")
-    service_name = msg.get("service_name", "Unknown Service")
-    print(f"\nReceived Message: {message_type} from {service_name}")
+    service_name = msg.get("service_name", "")
+    print(f"\nReceived Message: {message_type} {service_name}")
 
     es.index(index="logs", document=msg)
 
