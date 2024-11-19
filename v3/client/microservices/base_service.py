@@ -1,5 +1,6 @@
 import threading
 import time
+import random
 from uuid import uuid4
 from datetime import datetime
 from fluent import sender
@@ -26,13 +27,14 @@ class BaseService:
 
     def _send_heartbeat(self):
         while True:
-            heartbeat = {
-                "node_id": self.node_id,
-                "message_type": "HEARTBEAT",
-                "status": "UP",
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-            self.logger.emit("heartbeat", heartbeat)
+            if random.random() < 0.15:
+                heartbeat = {
+                    "node_id": self.node_id,
+                    "message_type": "HEARTBEAT",
+                    "status": "UP",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+                self.logger.emit("heartbeat", heartbeat)
             time.sleep(10)
 
     def _start_heartbeat(self):
