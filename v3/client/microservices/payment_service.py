@@ -1,9 +1,8 @@
-# client/microservices/payment_service.py
-
 from base_service import BaseService
 import random
 import time
 import logging
+import logging.handlers 
 import json
 from datetime import datetime
 from uuid import uuid4
