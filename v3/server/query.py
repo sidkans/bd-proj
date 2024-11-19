@@ -6,7 +6,7 @@ es = Elasticsearch(["http://localhost:9200"])
 response = es.search(
     index="logs",
     body={
-        "query": {"query": {"match_all": {}}},
+        "query": {"match_all": {}},
         "sort": [{"timestamp": {"order": "desc"}}],
         "size": 10,
     },
